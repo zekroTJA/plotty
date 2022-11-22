@@ -11,8 +11,6 @@ pub struct Config {
 pub struct Discord {
     pub guildid: u64,
     pub token: String,
-    pub guilds: Vec<String>,
-    pub allowedroles: Vec<String>,
 }
 
 #[derive(Deserialize, Debug, Clone)]
