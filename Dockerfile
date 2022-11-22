@@ -3,6 +3,7 @@ WORKDIR /build
 COPY src src
 COPY Cargo.lock .
 COPY Cargo.toml .
+RUN apk add musl-dev
 RUN cargo build --release
 
 FROM alpine:latest AS release
