@@ -106,6 +106,19 @@ impl Database {
         Ok(res)
     }
 
+    pub async fn get_plot_by_name(&self, name: &str) -> Result<Option<u64>> {
+        let mut rows = sqlx::query("SELECT user_id FROM plots WHERE plot_id = ?")
+            .bind(name)
+            .fetch(&self.pool);
+
+        if let Some(row) = rows.try_next().await? {
+            let id: u64 = row.try_get("user_id")?;
+            Ok(Some(id))
+        } else {
+            Ok(None)
+        }
+    }
+
     pub async fn add_plot<I: Into<u64> + Copy>(&self, user_id: I, plot_name: &str) -> Result<()> {
         sqlx::query("INSERT INTO plots (user_id, plot_id) VALUES (?, ?)")
             .bind(user_id.into())
