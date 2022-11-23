@@ -1,21 +1,20 @@
-use std::{ error::Error};
-use minecraft_client_rs::Message;
-use serenity::{
-    builder::CreateApplicationCommand,
-    model::prelude::{
-        command::CommandOptionType,
-        interaction::{
-            application_command::{ApplicationCommandInteraction, CommandDataOption},
-        },
-    },
-    prelude::Context,
-};
-use anyhow::{Result, bail};
 use crate::{
     db::Database,
-    helpers::{followup_err, followup},
+    helpers::{followup, followup_embed, followup_err},
     mc::Rcon,
 };
+use anyhow::{bail, Result};
+use minecraft_client_rs::Message;
+use serenity::{
+    builder::{CreateApplicationCommand, CreateEmbed},
+    model::prelude::{
+        command::CommandOptionType,
+        interaction::application_command::{ApplicationCommandInteraction, CommandDataOption},
+    },
+    prelude::Context,
+    utils::Color,
+};
+use std::error::Error;
 
 const ERR_PREFIX: &str = "§c";
 
@@ -23,9 +22,16 @@ pub fn register(command: &mut CreateApplicationCommand) -> &mut CreateApplicatio
     command
         .name("region")
         .description("Create, update or remove regions.")
+        // ----------------------------------
+        // list sub command
         .create_option(|o| {
-            // ----------------------------------
-            // create sub command
+            o.name("list")
+                .description("List your plots.")
+                .kind(CommandOptionType::SubCommand)
+        })
+        // ----------------------------------
+        // create sub command
+        .create_option(|o| {
             o.name("create")
                 .description("Create a new personal region")
                 .kind(CommandOptionType::SubCommand)
@@ -64,7 +70,7 @@ pub async fn run(
 ) -> Result<()> {
     let res = db.get_user_by_id(command.user.id).await?;
     if res.is_none() {
-        followup_err(command, &ctx.http, 
+        followup_err(command, &ctx.http,
             "You have not registered a Minecraft username. Please use the `/bind` command to bind your Discord account to your Minecrfat username.")
             .await?;
         return Ok(());
@@ -79,8 +85,33 @@ pub async fn run(
 
     match subcmd.name.as_str() {
         "create" => create(ctx, command, subcmd, &username, db, rc).await,
+        "list" => list(ctx, command, db).await,
         _ => Err(anyhow::anyhow!("Unregistered sub command")),
     }
+}
+
+// ---- SUB COMMAND HANDLERS ----
+
+async fn list(ctx: &Context, command: &ApplicationCommandInteraction, db: &Database) -> Result<()> {
+    let plots = db
+        .get_user_plots(command.user.id)
+        .await?
+        .iter()
+        .map(|p| format!("  ▫️ {p}"))
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    followup_embed(
+        command,
+        &ctx.http,
+        CreateEmbed::default()
+            .color(Color::BLURPLE)
+            .description(format!("These are all your plots:\n\n{plots}"))
+            .to_owned(),
+    )
+    .await?;
+
+    Ok(())
 }
 
 async fn create(
@@ -93,7 +124,11 @@ async fn create(
 ) -> Result<()> {
     let plot_names = db.get_user_plots(command.user.id).await?;
 
-    let plot_name = format!("{}_plot_{}", username.replace('_', ""), plot_names.len() + 1);
+    let plot_name = format!(
+        "{}_plot_{}",
+        username.replace('_', ""),
+        plot_names.len() + 1
+    );
 
     dbg!(subcmd);
 
@@ -105,13 +140,21 @@ async fn create(
     create_plot(rc, username, &plot_name, pos1_x, pos1_z, pos2_x, pos2_z)?;
     db.add_plot(command.user.id, &plot_name).await?;
 
-    followup(command, &ctx.http, format!("Your plot {plot_name} has been created! 🎉")).await?;
+    followup(
+        command,
+        &ctx.http,
+        format!("Your plot {plot_name} has been created! 🎉"),
+    )
+    .await?;
 
     Ok(())
 }
 
+// ---- HELPERS ----
+
 fn get_pos_option(subcmd: &CommandDataOption, name: &str) -> Result<i64> {
-    let i = subcmd.options
+    let i = subcmd
+        .options
         .iter()
         .find(|o| o.name == name)
         .ok_or_else(|| anyhow::anyhow!("No value for {}", name))?
@@ -123,11 +166,19 @@ fn get_pos_option(subcmd: &CommandDataOption, name: &str) -> Result<i64> {
     Ok(i)
 }
 
-fn create_plot(rc: &Rcon, user_name: &str, plot_name: &str, pos1_x: i64, pos1_z: i64, pos2_x: i64, pos2_z: i64) -> Result<()> {
+fn create_plot(
+    rc: &Rcon,
+    user_name: &str,
+    plot_name: &str,
+    pos1_x: i64,
+    pos1_z: i64,
+    pos2_x: i64,
+    pos2_z: i64,
+) -> Result<()> {
     let mut rc = rc
-            .get_conn()
-            .map_err(|e| anyhow::anyhow!("RCON connection failed: {}", e.to_string()))?;
-    
+        .get_conn()
+        .map_err(|e| anyhow::anyhow!("RCON connection failed: {}", e.to_string()))?;
+
     // TODO: Make configurable or whatever.
     check_err(rc.cmd("/world world"))?;
     check_err(rc.cmd(&format!("/pos1 {pos1_x},0,{pos1_z}")))?;

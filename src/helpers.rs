@@ -11,16 +11,15 @@ pub async fn followup_err<D: ToString>(
     http: impl AsRef<Http>,
     msg: D,
 ) -> Result<Message> {
-    command
-        .create_followup_message(http, |m| {
-            m.ephemeral(true).add_embed(
-                CreateEmbed::default()
-                    .color(Color::RED)
-                    .description(msg)
-                    .to_owned(),
-            )
-        })
-        .await
+    followup_embed(
+        command,
+        http,
+        CreateEmbed::default()
+            .color(Color::RED)
+            .description(msg)
+            .to_owned(),
+    )
+    .await
 }
 
 pub async fn followup<D: ToString>(
@@ -28,14 +27,23 @@ pub async fn followup<D: ToString>(
     http: impl AsRef<Http>,
     msg: D,
 ) -> Result<Message> {
+    followup_embed(
+        command,
+        http,
+        CreateEmbed::default()
+            .color(Color::FOOYOO)
+            .description(msg)
+            .to_owned(),
+    )
+    .await
+}
+
+pub async fn followup_embed(
+    command: &ApplicationCommandInteraction,
+    http: impl AsRef<Http>,
+    embed: CreateEmbed,
+) -> Result<Message> {
     command
-        .create_followup_message(http, |m| {
-            m.ephemeral(true).add_embed(
-                CreateEmbed::default()
-                    .color(Color::FOOYOO)
-                    .description(msg)
-                    .to_owned(),
-            )
-        })
+        .create_followup_message(http, |m| m.ephemeral(true).add_embed(embed))
         .await
 }
