@@ -17,19 +17,16 @@ use serenity::{
     utils::Color,
     Client,
 };
-use std::{
-    io,
-    sync::{Arc, Mutex},
-};
+use std::{io, sync::Arc};
 
 struct Handler {
     cfg: conf::Config,
     db: Arc<Database>,
-    rc: Arc<Mutex<Rcon>>,
+    rc: Arc<Rcon>,
 }
 
 impl Handler {
-    fn new(cfg: conf::Config, db: Arc<Database>, rc: Arc<Mutex<Rcon>>) -> Self {
+    fn new(cfg: conf::Config, db: Arc<Database>, rc: Arc<Rcon>) -> Self {
         Self { cfg, db, rc }
     }
 }
@@ -45,7 +42,7 @@ impl EventHandler for Handler {
 
             debug!("Received command interaction: {:#?}", command);
             let res = match command.data.name.as_str() {
-                "region" => commands::region::run(&ctx, command, &self.db, self.rc.clone()).await,
+                "region" => commands::region::run(&ctx, command, &self.db, &self.rc).await,
                 "bind" => commands::bind::run(&ctx, command, &self.db, &self.rc).await,
                 _ => Err(anyhow::anyhow!("not implemented")),
             };
@@ -119,9 +116,7 @@ async fn main() {
     db.init().await.expect("Database preparation failed");
 
     info!("Initializing RCON connection ...");
-    let rc = Arc::new(Mutex::new(
-        Rcon::new(&cfg.rcon).expect("RCON client initialization failed"),
-    ));
+    let rc = Arc::new(Rcon::new(&cfg.rcon).expect("RCON client initialization failed"));
 
     let mut client = Client::builder(cfg.discord.token.clone(), GatewayIntents::empty())
         .event_handler(Handler::new(cfg.clone(), db.clone(), rc.clone()))

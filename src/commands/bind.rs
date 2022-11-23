@@ -12,7 +12,6 @@ use serenity::{
     },
     prelude::Context,
 };
-use std::sync::Mutex;
 
 pub fn register(command: &mut CreateApplicationCommand) -> &mut CreateApplicationCommand {
     command
@@ -30,7 +29,7 @@ pub async fn run(
     ctx: &Context,
     command: &ApplicationCommandInteraction,
     db: &Database,
-    rc: &Mutex<Rcon>,
+    rc: &Rcon,
 ) -> Result<()> {
     let mcname = &command
         .data
@@ -62,8 +61,8 @@ pub async fn run(
     let msg: Message;
     {
         let mut rc = rc
-            .lock()
-            .map_err(|_| anyhow::anyhow!("RCON lock is poisoned"))?;
+            .get_conn()
+            .map_err(|e| anyhow::anyhow!("RCON connection failed: {}", e.to_string()))?;
 
         msg = rc
             .cmd(&format!("whitelist add {}", mcname))

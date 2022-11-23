@@ -1,4 +1,4 @@
-use std::{sync::{Mutex, Arc}, error::Error};
+use std::{ error::Error};
 use minecraft_client_rs::Message;
 use serenity::{
     builder::CreateApplicationCommand,
@@ -60,7 +60,7 @@ pub async fn run(
     ctx: &Context,
     command: &ApplicationCommandInteraction,
     db: &Database,
-    rc: Arc<Mutex<Rcon>>,
+    rc: &Rcon,
 ) -> Result<()> {
     let res = db.get_user_by_id(command.user.id).await?;
     if res.is_none() {
@@ -78,7 +78,7 @@ pub async fn run(
         .ok_or_else(|| anyhow::anyhow!("Response does not contain any sub command option."))?;
 
     match subcmd.name.as_str() {
-        "create" => create(ctx, command, subcmd, &username, db, &rc).await,
+        "create" => create(ctx, command, subcmd, &username, db, rc).await,
         _ => Err(anyhow::anyhow!("Unregistered sub command")),
     }
 }
@@ -89,7 +89,7 @@ async fn create(
     subcmd: &CommandDataOption,
     username: &str,
     db: &Database,
-    rc: &Mutex<Rcon>,
+    rc: &Rcon,
 ) -> Result<()> {
     let plot_names = db.get_user_plots(command.user.id).await?;
 
@@ -123,8 +123,10 @@ fn get_pos_option(subcmd: &CommandDataOption, name: &str) -> Result<i64> {
     Ok(i)
 }
 
-fn create_plot(rc: &Mutex<Rcon>, user_name: &str, plot_name: &str, pos1_x: i64, pos1_z: i64, pos2_x: i64, pos2_z: i64) -> Result<()> {
-    let mut rc = rc.lock().map_err(|_| anyhow::anyhow!("RCON lock is poisoned"))?;
+fn create_plot(rc: &Rcon, user_name: &str, plot_name: &str, pos1_x: i64, pos1_z: i64, pos2_x: i64, pos2_z: i64) -> Result<()> {
+    let mut rc = rc
+            .get_conn()
+            .map_err(|e| anyhow::anyhow!("RCON connection failed: {}", e.to_string()))?;
     
     // TODO: Make configurable or whatever.
     check_err(rc.cmd("/world world"))?;
