@@ -96,7 +96,7 @@ impl EventHandler for Handler {
 #[tokio::main]
 async fn main() {
     env_logger::Builder::from_env(
-        Env::default().default_filter_or("info,serenity=warn,tracing=warn"),
+        Env::default().default_filter_or("info,serenity=warn,tracing=warn,sqlx::query=warn"),
     )
     .try_init()
     .map_err(|e| io::Error::new(io::ErrorKind::Other, e))
