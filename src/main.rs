@@ -12,7 +12,10 @@ use mc::Rcon;
 use serenity::{
     async_trait,
     builder::CreateEmbed,
-    model::prelude::{interaction::Interaction, GuildId, Ready},
+    model::prelude::{
+        interaction::{Interaction, InteractionResponseType},
+        GuildId, Ready,
+    },
     prelude::{Context, EventHandler, GatewayIntents},
     utils::Color,
     Client,
@@ -35,7 +38,14 @@ impl Handler {
 impl EventHandler for Handler {
     async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
         if let Interaction::ApplicationCommand(command) = &interaction {
-            if let Err(err) = command.defer(&ctx.http).await {
+            // Defer interaction emphemerally
+            if let Err(err) = command
+                .create_interaction_response(&ctx.http, |i| {
+                    i.kind(InteractionResponseType::DeferredChannelMessageWithSource)
+                        .interaction_response_data(|d| d.ephemeral(true))
+                })
+                .await
+            {
                 error!("Defering interaction failed: {}", err);
                 return;
             }
