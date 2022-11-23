@@ -93,7 +93,7 @@ async fn create(
 ) -> Result<()> {
     let plot_names = db.get_user_plots(command.user.id).await?;
 
-    let plot_name = format!("{}_plot_{}", username.replace('_', ""), plot_names.len() + 2);
+    let plot_name = format!("{}_plot_{}", username.replace('_', ""), plot_names.len() + 1);
 
     dbg!(subcmd);
 
