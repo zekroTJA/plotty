@@ -195,8 +195,7 @@ async fn redefine(
     db: &Database,
     rc: &Rcon,
 ) -> Result<()> {
-    let plot_name = &command
-        .data
+    let plot_name = &subcmd
         .options
         .iter()
         .find(|o| o.name == "plotname")
