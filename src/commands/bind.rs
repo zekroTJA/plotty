@@ -58,14 +58,21 @@ pub async fn run(
         }
     }
 
+    let name_before = db.get_user_by_id(command.user.id).await?;
+
     let msg: Message;
     {
         let mut rc = rc
             .get_conn()
             .map_err(|e| anyhow::anyhow!("RCON connection failed: {}", e.to_string()))?;
 
+        if let Some(name_before) = name_before {
+            rc.cmd(&format!("whitelist remove {name_before}"))
+                .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+        }
+
         msg = rc
-            .cmd(&format!("whitelist add {}", mcname))
+            .cmd(&format!("whitelist add {mcname}"))
             .map_err(|e| anyhow::anyhow!(e.to_string()))?;
     }
 
