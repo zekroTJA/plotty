@@ -2,7 +2,7 @@ pub mod models;
 
 use anyhow::Result;
 use serenity::futures::TryStreamExt;
-use sqlx::{migrate::Migration, MySqlPool, Row};
+use sqlx::{MySqlPool, Row};
 
 pub struct Database {
     pool: MySqlPool,

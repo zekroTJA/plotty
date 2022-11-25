@@ -1,8 +1,4 @@
-use crate::{
-    db::Database,
-    helpers::{followup, followup_err},
-    mc::Rcon,
-};
+use crate::{db::Database, helpers::FollowUpHelper, mc::Rcon};
 use anyhow::Result;
 use minecraft_client_rs::Message;
 use serenity::{
@@ -48,12 +44,12 @@ pub async fn run(
 
     if let Some(res) = res {
         if res == u64::from(command.user.id) {
-            followup_err(
-                command,
-                &ctx.http,
-                "This username is already registered by another user.",
-            )
-            .await?;
+            command
+                .followup_err(
+                    &ctx.http,
+                    "This username is already registered by another user.",
+                )
+                .await?;
             return Ok(());
         }
     }
@@ -77,29 +73,26 @@ pub async fn run(
     }
 
     if msg.body.trim() == "That player does not exist" {
-        followup_err(
-            command,
-            &ctx.http,
-            "That Minecraft player name does not not exist.",
-        )
-        .await?;
+        command
+            .followup_err(&ctx.http, "That Minecraft player name does not not exist.")
+            .await?;
         return Ok(());
     }
 
     db.set_user(command.user.id, mcname).await?;
 
-    followup(
-        command,
-        &ctx.http,
-        format!(
-            concat!(
-                "Successfully bound your account to the name {}. 🥳\n\n",
-                "By the way, you are now also white listed on the server! 👀"
+    command
+        .followup(
+            &ctx.http,
+            format!(
+                concat!(
+                    "Successfully bound your account to the name {}. 🥳\n\n",
+                    "By the way, you are now also white listed on the server! 👀"
+                ),
+                mcname
             ),
-            mcname
-        ),
-    )
-    .await?;
+        )
+        .await?;
 
     Ok(())
 }
