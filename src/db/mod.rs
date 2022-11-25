@@ -2,7 +2,7 @@ pub mod models;
 
 use anyhow::Result;
 use serenity::futures::TryStreamExt;
-use sqlx::{MySqlPool, Row};
+use sqlx::{migrate::Migration, MySqlPool, Row};
 
 pub struct Database {
     pool: MySqlPool,
@@ -16,34 +16,7 @@ impl Database {
     }
 
     pub async fn init(&self) -> Result<()> {
-        sqlx::query(
-            "
-                CREATE TABLE IF NOT EXISTS users (
-                    user_id BIGINT UNSIGNED,
-                    mc_name VARCHAR(64),
-
-                    PRIMARY KEY (user_id)
-                )
-            ",
-        )
-        .execute(&self.pool)
-        .await?;
-
-        sqlx::query(
-            "
-                CREATE TABLE IF NOT EXISTS plots (
-                    plot_id VARCHAR(64),
-                    user_id BIGINT UNSIGNED,
-
-                    PRIMARY KEY (plot_id),
-                    FOREIGN KEY (user_id)
-                        REFERENCES users(user_id)
-                        ON DELETE CASCADE
-                )
-            ",
-        )
-        .execute(&self.pool)
-        .await?;
+        sqlx::migrate!("./migrations").run(&self.pool).await?;
 
         Ok(())
     }
