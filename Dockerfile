@@ -1,6 +1,7 @@
 FROM rust:alpine AS build
 WORKDIR /build
 COPY src src
+COPY migrations migrations
 COPY Cargo.lock .
 COPY Cargo.toml .
 RUN apk add musl-dev
