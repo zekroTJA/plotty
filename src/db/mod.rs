@@ -121,7 +121,7 @@ impl Database {
     }
 
     pub async fn update_plot(&self, region: &Region) -> Result<()> {
-        sqlx::query("UPDATE plots SET ax = ?, az = ?, bx = ?, bz = ? WHERE plot_name = ?")
+        sqlx::query("UPDATE plots SET ax = ?, az = ?, bx = ?, bz = ? WHERE plot_id = ?")
             .bind(region.perimeter.0 .0)
             .bind(region.perimeter.0 .1)
             .bind(region.perimeter.1 .0)
