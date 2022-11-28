@@ -73,7 +73,7 @@ impl Database {
         while let Some(row) = rows.try_next().await? {
             let region = Region {
                 owner: user_id.into(),
-                name: row.try_get("user_id")?,
+                name: row.try_get("plot_id")?,
                 perimeter: Perimeter(
                     Point(row.try_get("ax")?, row.try_get("az")?),
                     Point(row.try_get("bx")?, row.try_get("bz")?),
