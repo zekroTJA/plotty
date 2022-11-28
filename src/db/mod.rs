@@ -100,4 +100,12 @@ impl Database {
             .await?;
         Ok(())
     }
+
+    pub async fn delete_plot(&self, plot_name: &str) -> Result<()> {
+        sqlx::query("DELETE FROM plots WHERE plot_id = ?")
+            .bind(plot_name)
+            .execute(&self.pool)
+            .await?;
+        Ok(())
+    }
 }

@@ -9,12 +9,16 @@ use serenity::{
     builder::{CreateApplicationCommand, CreateEmbed},
     model::prelude::{
         command::CommandOptionType,
-        interaction::application_command::{ApplicationCommandInteraction, CommandDataOption},
+        component::ButtonStyle,
+        interaction::{
+            application_command::{ApplicationCommandInteraction, CommandDataOption},
+            InteractionResponseType,
+        },
     },
     prelude::Context,
     utils::Color,
 };
-use std::error::Error;
+use std::{error::Error, time::Duration};
 
 const ERR_PREFIX: &str = "§c";
 
@@ -138,6 +142,19 @@ pub fn register(command: &mut CreateApplicationCommand) -> &mut CreateApplicatio
                         })
                 })
         })
+        // ----------------------------------
+        // delete sub command
+        .create_option(|o| {
+            o.name("delete")
+                .description("Delete your personal region")
+                .kind(CommandOptionType::SubCommand)
+                .create_sub_option(|so| {
+                    so.name("plotname")
+                        .description("The name of your plot.")
+                        .kind(CommandOptionType::String)
+                        .required(true)
+                })
+        })
 }
 
 pub async fn run(
@@ -166,6 +183,7 @@ pub async fn run(
         "create" => create(ctx, command, subcmd, &username, db, rc).await,
         "redefine" => redefine(ctx, command, subcmd, db, rc).await,
         "members" => members(ctx, command, subcmd, db, rc).await,
+        "delete" => delete(ctx, command, subcmd, db, rc).await,
         _ => Err(anyhow::anyhow!("Unregistered sub command")),
     }
 }
@@ -372,6 +390,108 @@ async fn members_remove(
             &ctx.http,
             format!("Member {membername} has been removed from plot {plotname}!"),
         )
+        .await?;
+
+    Ok(())
+}
+
+async fn delete(
+    ctx: &Context,
+    command: &ApplicationCommandInteraction,
+    subcmd: &CommandDataOption,
+    db: &Database,
+    rc: &Rcon,
+) -> Result<()> {
+    let plot_name = &subcmd
+        .get_option_by_name("plotname")?
+        .as_str()
+        .ok_or_else(|| anyhow::anyhow!("Plot name value is not a string"))?
+        .to_lowercase();
+
+    let owner_id = db.get_plot_by_name(plot_name).await?;
+    if owner_id.is_none() || owner_id.unwrap() != u64::from(command.user.id) {
+        command
+            .followup_err(&ctx.http, "You can not delete this plot.")
+            .await?;
+        return Ok(());
+    }
+
+    let ok_id = xid::new().to_string();
+    let cancel_id = xid::new().to_string();
+    let m = command
+        .create_followup_message(&ctx.http, |msg| {
+            msg.add_embed(
+                CreateEmbed::default()
+                    .description(format!(
+                        "Do you really want to delete your plot {plot_name}?"
+                    ))
+                    .color(Color::ORANGE)
+                    .to_owned(),
+            )
+            .components(|c| {
+                c.create_action_row(|row| {
+                    row.create_button(|btn| {
+                        btn.custom_id(&ok_id)
+                            .style(ButtonStyle::Danger)
+                            .label("Delete Plot")
+                    })
+                    .create_button(|btn| {
+                        btn.custom_id(&cancel_id)
+                            .style(ButtonStyle::Secondary)
+                            .label("Cancel")
+                    })
+                })
+            })
+        })
+        .await?;
+
+    let interaction = m
+        .await_component_interaction(ctx)
+        .timeout(Duration::from_secs(60))
+        .await
+        .ok_or_else(|| anyhow::anyhow!("Timed out."))?;
+
+    if interaction.data.custom_id == cancel_id {
+        interaction
+            .create_interaction_response(&ctx.http, |r| {
+                r.kind(InteractionResponseType::UpdateMessage)
+                    .interaction_response_data(|d| {
+                        d.add_embed(
+                            CreateEmbed::default()
+                                .description("Action canceled.")
+                                .to_owned(),
+                        )
+                        .components(|c| c)
+                    })
+            })
+            .await?;
+        return Ok(());
+    }
+
+    {
+        let mut conn = rc
+            .get_conn()
+            .map_err(|e| anyhow::anyhow!("RCON connection failed: {}", e.to_string()))?;
+
+        // TODO: Make world configurable
+        check_err(conn.cmd(&format!("rg delete -w world {plot_name}")))?;
+    }
+
+    db.delete_plot(plot_name).await?;
+
+    interaction
+        .create_interaction_response(&ctx.http, |r| {
+            r.kind(InteractionResponseType::UpdateMessage)
+                .interaction_response_data(|d| {
+                    d.add_embed(
+                        CreateEmbed::default()
+                            .color(Color::FOOYOO)
+                            .description("The plot has been deleted.")
+                            .to_owned(),
+                    )
+                    .components(|c| c)
+                })
+        })
         .await?;
 
     Ok(())
