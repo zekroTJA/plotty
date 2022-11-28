@@ -1,5 +1,4 @@
-pub mod models;
-
+use crate::models::{Perimeter, Point, Region};
 use anyhow::Result;
 use serenity::futures::TryStreamExt;
 use sqlx::{MySqlPool, Row};
@@ -65,37 +64,69 @@ impl Database {
         Ok(())
     }
 
-    pub async fn get_user_plots<I: Into<u64> + Copy>(&self, user_id: I) -> Result<Vec<String>> {
-        let mut rows = sqlx::query("SELECT plot_id FROM plots WHERE user_id = ?")
+    pub async fn get_user_plots<I: Into<u64> + Copy>(&self, user_id: I) -> Result<Vec<Region>> {
+        let mut rows = sqlx::query("SELECT plot_id, ax, az, bx, bz FROM plots WHERE user_id = ?")
             .bind(user_id.into())
             .fetch(&self.pool);
 
         let mut res = Vec::new();
         while let Some(row) = rows.try_next().await? {
-            let id: String = row.try_get("plot_id")?;
-            res.push(id);
+            let region = Region {
+                owner: user_id.into(),
+                name: row.try_get("user_id")?,
+                perimeter: Perimeter(
+                    Point(row.try_get("ax")?, row.try_get("az")?),
+                    Point(row.try_get("bx")?, row.try_get("bz")?),
+                ),
+            };
+            res.push(region);
         }
 
         Ok(res)
     }
 
-    pub async fn get_plot_by_name(&self, name: &str) -> Result<Option<u64>> {
-        let mut rows = sqlx::query("SELECT user_id FROM plots WHERE plot_id = ?")
+    pub async fn get_plot_by_name(&self, name: &str) -> Result<Option<Region>> {
+        let mut rows = sqlx::query("SELECT user_id, ax, az, bx, bz FROM plots WHERE plot_id = ?")
             .bind(name)
             .fetch(&self.pool);
 
         if let Some(row) = rows.try_next().await? {
-            let id: u64 = row.try_get("user_id")?;
-            Ok(Some(id))
+            let region = Region {
+                name: name.to_owned(),
+                owner: row.try_get("user_id")?,
+                perimeter: Perimeter(
+                    Point(row.try_get("ax")?, row.try_get("az")?),
+                    Point(row.try_get("bx")?, row.try_get("bz")?),
+                ),
+            };
+            Ok(Some(region))
         } else {
             Ok(None)
         }
     }
 
-    pub async fn add_plot<I: Into<u64> + Copy>(&self, user_id: I, plot_name: &str) -> Result<()> {
-        sqlx::query("INSERT INTO plots (user_id, plot_id) VALUES (?, ?)")
-            .bind(user_id.into())
-            .bind(plot_name)
+    pub async fn add_plot(&self, region: &Region) -> Result<()> {
+        sqlx::query(
+            "INSERT INTO plots (user_id, plot_id, ax, az, bx, bz) VALUES (?, ?, ?, ?, ?, ?)",
+        )
+        .bind(region.owner)
+        .bind(&region.name)
+        .bind(region.perimeter.0 .0)
+        .bind(region.perimeter.0 .1)
+        .bind(region.perimeter.1 .0)
+        .bind(region.perimeter.1 .1)
+        .execute(&self.pool)
+        .await?;
+        Ok(())
+    }
+
+    pub async fn update_plot(&self, region: &Region) -> Result<()> {
+        sqlx::query("UPDATE plots SET ax = ?, az = ?, bx = ?, bz = ? WHERE plot_name = ?")
+            .bind(region.perimeter.0 .0)
+            .bind(region.perimeter.0 .1)
+            .bind(region.perimeter.1 .0)
+            .bind(region.perimeter.1 .1)
+            .bind(&region.name)
             .execute(&self.pool)
             .await?;
         Ok(())

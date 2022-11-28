@@ -2,6 +2,7 @@ use crate::{
     db::Database,
     helpers::{FollowUpHelper, OptionsHelper},
     mc::{Conn, Rcon},
+    models::{Perimeter, Point, Region},
 };
 use anyhow::{bail, Result};
 use minecraft_client_rs::Message;
@@ -195,7 +196,7 @@ async fn list(ctx: &Context, command: &ApplicationCommandInteraction, db: &Datab
         .get_user_plots(command.user.id)
         .await?
         .iter()
-        .map(|p| format!("  ▫️ {p}"))
+        .map(|p| format!("  ▫️ {}", p.name))
         .collect::<Vec<_>>()
         .join("\n");
 
@@ -228,13 +229,25 @@ async fn create(
         plot_names.len() + 1
     );
 
-    let pos1_x = get_pos_option(subcmd, "pos1-x")?;
-    let pos1_z = get_pos_option(subcmd, "pos1-z")?;
-    let pos2_x = get_pos_option(subcmd, "pos2-x")?;
-    let pos2_z = get_pos_option(subcmd, "pos2-z")?;
+    let perimeter = Perimeter(
+        Point(
+            get_pos_option(subcmd, "pos1-x")?,
+            get_pos_option(subcmd, "pos1-z")?,
+        ),
+        Point(
+            get_pos_option(subcmd, "pos2-x")?,
+            get_pos_option(subcmd, "pos2-z")?,
+        ),
+    );
 
-    create_plot(rc, username, &plot_name, pos1_x, pos1_z, pos2_x, pos2_z)?;
-    db.add_plot(command.user.id, &plot_name).await?;
+    let region = Region {
+        owner: command.user.id.into(),
+        name: plot_name.clone(),
+        perimeter,
+    };
+
+    create_plot(rc, &region, username)?;
+    db.add_plot(&region).await?;
 
     command
         .followup(
@@ -259,20 +272,33 @@ async fn redefine(
         .ok_or_else(|| anyhow::anyhow!("Plot name value is not a string"))?
         .to_lowercase();
 
-    let owner_id = db.get_plot_by_name(plot_name).await?;
-    if owner_id.is_none() || owner_id.unwrap() != u64::from(command.user.id) {
+    let region = db.get_plot_by_name(plot_name).await?;
+    if region.is_none() || region.unwrap().owner != u64::from(command.user.id) {
         command
             .followup_err(&ctx.http, "You can not update this plot.")
             .await?;
         return Ok(());
     }
 
-    let pos1_x = get_pos_option(subcmd, "pos1-x")?;
-    let pos1_z = get_pos_option(subcmd, "pos1-z")?;
-    let pos2_x = get_pos_option(subcmd, "pos2-x")?;
-    let pos2_z = get_pos_option(subcmd, "pos2-z")?;
+    let perimeter = Perimeter(
+        Point(
+            get_pos_option(subcmd, "pos1-x")?,
+            get_pos_option(subcmd, "pos1-z")?,
+        ),
+        Point(
+            get_pos_option(subcmd, "pos2-x")?,
+            get_pos_option(subcmd, "pos2-z")?,
+        ),
+    );
 
-    update_plot(rc, plot_name, pos1_x, pos1_z, pos2_x, pos2_z)?;
+    let region = Region {
+        owner: command.user.id.into(),
+        name: plot_name.clone(),
+        perimeter,
+    };
+
+    update_plot(rc, &region)?;
+    db.update_plot(&region).await?;
 
     command
         .followup(
@@ -320,9 +346,9 @@ async fn members_add(
         .as_str()
         .ok_or_else(|| anyhow::anyhow!("Value is not a string"))?;
 
-    let owner_id = db.get_plot_by_name(plotname).await?;
+    let region = db.get_plot_by_name(plotname).await?;
 
-    if owner_id.is_none() || owner_id.unwrap() != u64::from(command.user.id) {
+    if region.is_none() || region.unwrap().owner != u64::from(command.user.id) {
         command
             .followup_err(&ctx.http, "You can not alter the members of this plot.")
             .await?;
@@ -365,9 +391,9 @@ async fn members_remove(
         .as_str()
         .ok_or_else(|| anyhow::anyhow!("Value is not a string"))?;
 
-    let owner_id = db.get_plot_by_name(plotname).await?;
+    let region = db.get_plot_by_name(plotname).await?;
 
-    if owner_id.is_none() || owner_id.unwrap() != u64::from(command.user.id) {
+    if region.is_none() || region.unwrap().owner != u64::from(command.user.id) {
         command
             .followup_err(&ctx.http, "You can not alter the members of this plot.")
             .await?;
@@ -408,8 +434,8 @@ async fn delete(
         .ok_or_else(|| anyhow::anyhow!("Plot name value is not a string"))?
         .to_lowercase();
 
-    let owner_id = db.get_plot_by_name(plot_name).await?;
-    if owner_id.is_none() || owner_id.unwrap() != u64::from(command.user.id) {
+    let region = db.get_plot_by_name(plot_name).await?;
+    if region.is_none() || region.unwrap().owner != u64::from(command.user.id) {
         command
             .followup_err(&ctx.http, "You can not delete this plot.")
             .await?;
@@ -507,54 +533,33 @@ fn get_pos_option(subcmd: &CommandDataOption, name: &str) -> Result<i64> {
     Ok(i)
 }
 
-fn create_plot(
-    rc: &Rcon,
-    user_name: &str,
-    plot_name: &str,
-    pos1_x: i64,
-    pos1_z: i64,
-    pos2_x: i64,
-    pos2_z: i64,
-) -> Result<()> {
+fn create_plot(rc: &Rcon, region: &Region, user_name: &str) -> Result<()> {
     let mut conn = rc
         .get_conn()
         .map_err(|e| anyhow::anyhow!("RCON connection failed: {}", e.to_string()))?;
 
-    select_perimeter(&mut conn, pos1_x, pos1_z, pos2_x, pos2_z)?;
-    check_err(conn.cmd(&format!("rg create {plot_name} {user_name}")))?;
+    select_perimeter(&mut conn, &region.perimeter)?;
+    check_err(conn.cmd(&format!("rg create {} {}", region.name, user_name)))?;
 
     Ok(())
 }
 
-fn update_plot(
-    rc: &Rcon,
-    plot_name: &str,
-    pos1_x: i64,
-    pos1_z: i64,
-    pos2_x: i64,
-    pos2_z: i64,
-) -> Result<()> {
+fn update_plot(rc: &Rcon, region: &Region) -> Result<()> {
     let mut conn = rc
         .get_conn()
         .map_err(|e| anyhow::anyhow!("RCON connection failed: {}", e.to_string()))?;
 
-    select_perimeter(&mut conn, pos1_x, pos1_z, pos2_x, pos2_z)?;
-    check_err(conn.cmd(&format!("rg update {plot_name}")))?;
+    select_perimeter(&mut conn, &region.perimeter)?;
+    check_err(conn.cmd(&format!("rg update {}", region.name)))?;
 
     Ok(())
 }
 
-fn select_perimeter(
-    conn: &mut Conn,
-    pos1_x: i64,
-    pos1_z: i64,
-    pos2_x: i64,
-    pos2_z: i64,
-) -> Result<()> {
+fn select_perimeter(conn: &mut Conn, perimeter: &Perimeter) -> Result<()> {
     // TODO: Make configurable or whatever.
     check_err(conn.cmd("/world world"))?;
-    check_err(conn.cmd(&format!("/pos1 {pos1_x},0,{pos1_z}")))?;
-    check_err(conn.cmd(&format!("/pos2 {pos2_x},0,{pos2_z}")))?;
+    check_err(conn.cmd(&format!("/pos1 {},0,{}", perimeter.0 .0, perimeter.0 .1)))?;
+    check_err(conn.cmd(&format!("/pos2 {},0,{}", perimeter.1 .0, perimeter.1 .1)))?;
     check_err(conn.cmd("/expand vert"))?;
     Ok(())
 }

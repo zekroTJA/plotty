@@ -3,6 +3,7 @@ mod conf;
 mod db;
 mod helpers;
 mod mc;
+mod models;
 
 use config::{builder::DefaultState, Config, ConfigBuilder, Environment, File, FileFormat};
 use db::Database;
