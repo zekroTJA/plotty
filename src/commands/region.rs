@@ -196,7 +196,7 @@ async fn list(ctx: &Context, command: &ApplicationCommandInteraction, db: &Datab
         .get_user_plots(command.user.id)
         .await?
         .iter()
-        .map(|p| format!("  ▫️ {}", p.name))
+        .map(|p| format!("  ▫️ {}", p.to_string()))
         .collect::<Vec<_>>()
         .join("\n");
 

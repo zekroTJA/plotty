@@ -11,6 +11,8 @@ use serenity::{
     Result,
 };
 
+use crate::models::Region;
+
 #[async_trait]
 pub trait FollowUpHelper {
     async fn followup_err<D: ToString + Send + Sync>(
@@ -87,5 +89,11 @@ impl OptionsHelper for CommandDataOption {
             .as_ref()
             .ok_or_else(|| anyhow::anyhow!("No value for {name}"))?;
         Ok(i)
+    }
+}
+
+impl ToString for Region {
+    fn to_string(&self) -> String {
+        format!("`{}` ({}m²)", self.name, self.perimeter.size())
     }
 }
