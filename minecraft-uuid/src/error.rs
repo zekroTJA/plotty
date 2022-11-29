@@ -2,6 +2,8 @@ use std::{error::Error, fmt::Display};
 
 use crate::models::ErrorResponse;
 
+/// Error constructed from an erroneous API
+/// response.
 #[derive(Debug, Clone)]
 pub struct APIError {
     status_code: u16,
@@ -10,16 +12,28 @@ pub struct APIError {
 }
 
 impl APIError {
+    /// The HTTP status code of the response.
     pub fn status_code(&self) -> u16 {
         self.status_code
     }
 
+    /// The error status message.
     pub fn status(&self) -> &str {
         self.status.as_ref()
     }
 
+    /// The actual error message with more concise
+    /// error details.
     pub fn message(&self) -> &str {
         self.message.as_ref()
+    }
+
+    pub(crate) fn new(status_code: u16, status: &str, message: &str) -> Self {
+        Self {
+            status_code,
+            status: status.to_owned(),
+            message: message.to_owned(),
+        }
     }
 
     pub(crate) fn set_status_code(&mut self, status_code: u16) {
