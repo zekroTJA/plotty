@@ -1,0 +1,11 @@
+[package]
+name = "minecraft-uuid-cli"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+tokio = "1.22.0"
+uuid = "1.2.2"
+minecraft-uuid = { version = "1", path = "../minecraft-uuid" }

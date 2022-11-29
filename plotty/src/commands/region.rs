@@ -1,3 +1,4 @@
+use crate::idcache::get_username_by_uuid;
 use crate::{
     db::Database,
     helpers::{FollowUpHelper, OptionsHelper},
@@ -172,7 +173,7 @@ pub async fn run(
         return Ok(());
     }
 
-    let username = res.unwrap();
+    let username = get_username_by_uuid(&res.unwrap()).await?;
 
     let options = &command.data.options;
     let subcmd = options

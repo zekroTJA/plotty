@@ -2,6 +2,7 @@ mod commands;
 mod conf;
 mod db;
 mod helpers;
+mod idcache;
 mod mc;
 mod models;
 

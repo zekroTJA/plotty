@@ -1,3 +1,4 @@
+use crate::idcache::get_uuid_by_username;
 use crate::{db::Database, helpers::FollowUpHelper, mc::Rcon};
 use anyhow::Result;
 use minecraft_client_rs::Message;
@@ -40,7 +41,9 @@ pub async fn run(
         .ok_or_else(|| anyhow::anyhow!("Username value is not a string"))?
         .to_lowercase();
 
-    let res = db.get_user_by_mcname(mcname).await?;
+    let uuid = get_uuid_by_username(mcname).await?;
+
+    let res = db.get_user_by_mcname(&uuid).await?;
 
     if let Some(res) = res {
         if res == u64::from(command.user.id) {
@@ -79,7 +82,7 @@ pub async fn run(
         return Ok(());
     }
 
-    db.set_user(command.user.id, mcname).await?;
+    db.set_user(command.user.id, &uuid).await?;
 
     command
         .followup(
