@@ -2,6 +2,7 @@ FROM rust:alpine AS build
 WORKDIR /build
 COPY plotty plotty
 COPY minecraft-uuid minecraft-uuid
+COPY minecraft-uuid-cli minecraft-uuid-cli
 COPY Cargo.lock .
 COPY Cargo.toml .
 RUN apk add musl-dev
