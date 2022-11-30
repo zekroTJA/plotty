@@ -2,6 +2,12 @@
 name = "minecraft-uuid"
 version = "1.0.0"
 edition = "2021"
+description = "A simple API wrapper to convert Minecraft usernames to UUIDs (and vice versa)."
+authors = ["Ringo Hoffmann <contact@zekro.de>"]
+license = "MIT"
+documentation = "https://docs.rs/minecraft-uuid"
+readme = "README.md"
+repository = "https://github.com/zekroTJA/plotty"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -9,4 +15,6 @@ edition = "2021"
 anyhow = "1.0.66"
 reqwest = { version = "0.11", default-features = false, features = ["json", "rustls-tls"] }
 serde = { version = "1.0.148", features = ["derive"] }
+
+[dev-dependencies]
 tokio = { version = "1", features = ["full"] }
