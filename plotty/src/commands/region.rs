@@ -340,14 +340,15 @@ async fn members_add(
     let plotname = subcmd
         .get_option_by_name("plotname")?
         .as_str()
-        .ok_or_else(|| anyhow::anyhow!("Value is not a string"))?;
+        .ok_or_else(|| anyhow::anyhow!("Value is not a string"))?
+        .to_lowercase();
 
     let membername = subcmd
         .get_option_by_name("username")?
         .as_str()
         .ok_or_else(|| anyhow::anyhow!("Value is not a string"))?;
 
-    let region = db.get_plot_by_name(plotname).await?;
+    let region = db.get_plot_by_name(&plotname).await?;
 
     if region.is_none() || region.unwrap().owner != u64::from(command.user.id) {
         command
@@ -385,14 +386,15 @@ async fn members_remove(
     let plotname = subcmd
         .get_option_by_name("plotname")?
         .as_str()
-        .ok_or_else(|| anyhow::anyhow!("Value is not a string"))?;
+        .ok_or_else(|| anyhow::anyhow!("Value is not a string"))?
+        .to_lowercase();
 
     let membername = subcmd
         .get_option_by_name("username")?
         .as_str()
         .ok_or_else(|| anyhow::anyhow!("Value is not a string"))?;
 
-    let region = db.get_plot_by_name(plotname).await?;
+    let region = db.get_plot_by_name(&plotname).await?;
 
     if region.is_none() || region.unwrap().owner != u64::from(command.user.id) {
         command
