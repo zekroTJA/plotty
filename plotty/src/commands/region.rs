@@ -173,7 +173,7 @@ pub async fn run(
         return Ok(());
     }
 
-    let username = get_username_by_uuid(&res.unwrap()).await?;
+    let username = get_username_by_uuid(&res.unwrap()).await?.to_lowercase();
 
     let options = &command.data.options;
     let subcmd = options
@@ -222,13 +222,12 @@ async fn create(
     db: &Database,
     rc: &Rcon,
 ) -> Result<()> {
-    let plot_names = db.get_user_plots(command.user.id).await?;
+    let plot_id = db
+        .get_plot_user_id(command.user.id)
+        .await?
+        .unwrap_or_default();
 
-    let plot_name = format!(
-        "{}_plot_{}",
-        username.replace('_', ""),
-        plot_names.len() + 1
-    );
+    let plot_name = format!("{}_plot_{}", username.replace('_', ""), plot_id + 1);
 
     let perimeter = Perimeter(
         Point(
@@ -247,6 +246,7 @@ async fn create(
         perimeter,
     };
 
+    db.inc_plot_user_id(command.user.id).await?;
     create_plot(rc, &region, username)?;
     db.add_plot(&region).await?;
 

@@ -139,4 +139,34 @@ impl Database {
             .await?;
         Ok(())
     }
+
+    pub async fn get_plot_user_id<I: Into<u64> + Copy>(&self, user_id: I) -> Result<Option<i64>> {
+        let mut rows = sqlx::query("SELECT plot_inc FROM plot_ids WHERE user_id = ?")
+            .bind(user_id.into())
+            .fetch(&self.pool);
+
+        if let Some(row) = rows.try_next().await? {
+            let inc = row.try_get("plot_inc")?;
+            Ok(Some(inc))
+        } else {
+            Ok(None)
+        }
+    }
+
+    pub async fn inc_plot_user_id<I: Into<u64> + Copy>(&self, id: I) -> Result<()> {
+        let res = sqlx::query("UPDATE plot_ids SET plot_inc = plot_inc + 1 WHERE user_id = ?")
+            .bind(id.into())
+            .execute(&self.pool)
+            .await?;
+
+        if res.rows_affected() == 0 {
+            sqlx::query("INSERT INTO plot_ids (user_id, plot_inc) VALUES (?, ?)")
+                .bind(id.into())
+                .bind(1)
+                .execute(&self.pool)
+                .await?;
+        }
+
+        Ok(())
+    }
 }
