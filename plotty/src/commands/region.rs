@@ -224,7 +224,6 @@ pub async fn autocomplete(ctx: &Context, i: &AutocompleteInteraction, db: &Datab
                 })
             })
             .collect();
-        dbg!(&plots);
         i.create_autocomplete_response(&ctx.http, |r| r.set_choices(plots))
             .await?;
     }
