@@ -7,6 +7,9 @@ use crate::{
 };
 use anyhow::{bail, Result};
 use minecraft_client_rs::Message;
+use serenity::json::{json, Value};
+use serenity::model::interactions::autocomplete;
+use serenity::model::prelude::autocomplete::AutocompleteInteraction;
 use serenity::{
     builder::{CreateApplicationCommand, CreateEmbed},
     model::prelude::{
@@ -77,6 +80,7 @@ pub fn register(command: &mut CreateApplicationCommand) -> &mut CreateApplicatio
                         .description("The name of your plot.")
                         .kind(CommandOptionType::String)
                         .required(true)
+                        .set_autocomplete(true)
                 })
                 .create_sub_option(|so| {
                     so.name("pos1-x")
@@ -118,6 +122,7 @@ pub fn register(command: &mut CreateApplicationCommand) -> &mut CreateApplicatio
                                 .description("The name of the plot.")
                                 .kind(CommandOptionType::String)
                                 .required(true)
+                                .set_autocomplete(true)
                         })
                         .create_sub_option(|sso| {
                             sso.name("username")
@@ -135,6 +140,7 @@ pub fn register(command: &mut CreateApplicationCommand) -> &mut CreateApplicatio
                                 .description("The name of the plot.")
                                 .kind(CommandOptionType::String)
                                 .required(true)
+                                .set_autocomplete(true)
                         })
                         .create_sub_option(|sso| {
                             sso.name("username")
@@ -155,6 +161,7 @@ pub fn register(command: &mut CreateApplicationCommand) -> &mut CreateApplicatio
                         .description("The name of your plot.")
                         .kind(CommandOptionType::String)
                         .required(true)
+                        .set_autocomplete(true)
                 })
         })
 }
@@ -188,6 +195,41 @@ pub async fn run(
         "delete" => delete(ctx, command, subcmd, db, rc).await,
         _ => Err(anyhow::anyhow!("Unregistered sub command")),
     }
+}
+
+pub async fn autocomplete(ctx: &Context, i: &AutocompleteInteraction, db: &Database) -> Result<()> {
+    let plotname_option = i
+        .data
+        .options
+        .iter()
+        .flat_map(|s| &s.options)
+        .find(|o| o.name == "plotname");
+
+    if let Some(plotname) = plotname_option {
+        let plots = db
+            .get_user_plots(i.user.id)
+            .await?
+            .iter()
+            .filter(|p| {
+                plotname
+                    .value
+                    .as_ref()
+                    .and_then(|v| v.as_str())
+                    .is_some_and(|v| p.name.starts_with(v))
+            })
+            .map(|p| {
+                json!({
+                    "name": p.name,
+                    "value": p.name
+                })
+            })
+            .collect();
+        dbg!(&plots);
+        i.create_autocomplete_response(&ctx.http, |r| r.set_choices(plots))
+            .await?;
+    }
+
+    Ok(())
 }
 
 // ---- SUB COMMAND HANDLERS ----

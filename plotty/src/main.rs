@@ -14,9 +14,15 @@ use mc::Rcon;
 use serenity::{
     async_trait,
     builder::CreateEmbed,
-    model::prelude::{
-        interaction::{Interaction, InteractionResponseType},
-        GuildId, Ready,
+    model::{
+        application::interaction::{
+            application_command::ApplicationCommandInteraction,
+            autocomplete::AutocompleteInteraction,
+        },
+        prelude::{
+            interaction::{Interaction, InteractionResponseType},
+            GuildId, Ready,
+        },
     },
     prelude::{Context, EventHandler, GatewayIntents},
     utils::Color,
@@ -36,47 +42,71 @@ impl Handler {
     }
 }
 
+impl Handler {
+    async fn handle_application_command(
+        &self,
+        ctx: Context,
+        command: ApplicationCommandInteraction,
+    ) {
+        // Defer interaction emphemerally
+        if let Err(err) = command
+            .create_interaction_response(&ctx.http, |i| {
+                i.kind(InteractionResponseType::DeferredChannelMessageWithSource)
+                    .interaction_response_data(|d| d.ephemeral(true))
+            })
+            .await
+        {
+            error!("Defering interaction failed: {}", err);
+            return;
+        }
+
+        debug!("Received command interaction: {:#?}", command);
+        let res = match command.data.name.as_str() {
+            "region" => commands::region::run(&ctx, &command, &self.db, &self.rc).await,
+            "bind" => commands::bind::run(&ctx, &command, &self.db, &self.rc).await,
+            _ => Err(anyhow::anyhow!("not implemented")),
+        };
+
+        if let Err(err) = res {
+            let res = command
+                .create_followup_message(&ctx.http, |response| {
+                    response.ephemeral(true);
+                    response.add_embed(
+                        CreateEmbed::default()
+                            .color(Color::RED)
+                            .description("The command execution failed.")
+                            .field("Error", err.to_string(), false)
+                            .to_owned(),
+                    )
+                })
+                .await;
+
+            if let Err(err) = res {
+                error!("Failed responding command error message: {}", err);
+            }
+        }
+    }
+
+    async fn handle_autocomplete(&self, ctx: Context, autocomplete: AutocompleteInteraction) {
+        let _ = match autocomplete.data.name.as_str() {
+            "region" => commands::region::autocomplete(&ctx, &autocomplete, &self.db).await,
+            "bind" => Ok(()),
+            _ => Ok(()),
+        };
+    }
+}
+
 #[async_trait]
 impl EventHandler for Handler {
     async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
-        if let Interaction::ApplicationCommand(command) = &interaction {
-            // Defer interaction emphemerally
-            if let Err(err) = command
-                .create_interaction_response(&ctx.http, |i| {
-                    i.kind(InteractionResponseType::DeferredChannelMessageWithSource)
-                        .interaction_response_data(|d| d.ephemeral(true))
-                })
-                .await
-            {
-                error!("Defering interaction failed: {}", err);
-                return;
+        match interaction {
+            Interaction::ApplicationCommand(command) => {
+                self.handle_application_command(ctx, command).await
             }
-
-            debug!("Received command interaction: {:#?}", command);
-            let res = match command.data.name.as_str() {
-                "region" => commands::region::run(&ctx, command, &self.db, &self.rc).await,
-                "bind" => commands::bind::run(&ctx, command, &self.db, &self.rc).await,
-                _ => Err(anyhow::anyhow!("not implemented")),
-            };
-
-            if let Err(err) = res {
-                let res = command
-                    .create_followup_message(&ctx.http, |response| {
-                        response.ephemeral(true);
-                        response.add_embed(
-                            CreateEmbed::default()
-                                .color(Color::RED)
-                                .description("The command execution failed.")
-                                .field("Error", err.to_string(), false)
-                                .to_owned(),
-                        )
-                    })
-                    .await;
-
-                if let Err(err) = res {
-                    error!("Failed responding command error message: {}", err);
-                }
+            Interaction::Autocomplete(autocomplete) => {
+                self.handle_autocomplete(ctx, autocomplete).await
             }
+            _ => {}
         }
     }
 
