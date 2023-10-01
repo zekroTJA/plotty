@@ -7,8 +7,7 @@ use crate::{
 };
 use anyhow::{bail, Result};
 use minecraft_client_rs::Message;
-use serenity::json::{json, Value};
-use serenity::model::interactions::autocomplete;
+use serenity::json::json;
 use serenity::model::prelude::autocomplete::AutocompleteInteraction;
 use serenity::{
     builder::{CreateApplicationCommand, CreateEmbed},
