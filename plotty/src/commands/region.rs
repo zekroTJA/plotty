@@ -202,6 +202,13 @@ pub async fn autocomplete(ctx: &Context, i: &AutocompleteInteraction, db: &Datab
         .options
         .iter()
         .flat_map(|s| &s.options)
+        .flat_map(|s| {
+            if s.options.is_empty() {
+                vec![s.clone()]
+            } else {
+                s.options.clone()
+            }
+        })
         .find(|o| o.name == "plotname");
 
     if let Some(plotname) = plotname_option {
