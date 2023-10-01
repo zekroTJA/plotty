@@ -280,6 +280,15 @@ async fn create(
         ),
     );
 
+    let collisions = find_collisions(db, command.user.id.into(), &perimeter).await?;
+    if !collisions.is_empty() {
+        anyhow::bail!(
+            "The perimeter of your defined plot would collide with {} other plot{}!",
+            collisions.len(),
+            if collisions.len() > 1 { "s" } else { "" }
+        );
+    }
+
     let region = Region {
         owner: command.user.id.into(),
         name: plot_name.clone(),
@@ -331,6 +340,15 @@ async fn redefine(
             get_pos_option(subcmd, "pos2-z")?,
         ),
     );
+
+    let collisions = find_collisions(db, command.user.id.into(), &perimeter).await?;
+    if !collisions.is_empty() {
+        anyhow::bail!(
+            "The perimeter of your defined plot would collide with {} other plot{}!",
+            collisions.len(),
+            if collisions.len() > 1 { "s" } else { "" }
+        );
+    }
 
     let region = Region {
         owner: command.user.id.into(),
@@ -613,4 +631,20 @@ fn check_err(res: Result<Message, Box<dyn Error>>) -> Result<Message> {
         bail!(msg.body);
     }
     Ok(msg)
+}
+
+async fn find_collisions(
+    db: &Database,
+    user_id: u64,
+    perimeter: &Perimeter,
+) -> Result<Vec<Region>> {
+    let plots = db.get_plots().await?;
+
+    let res = plots
+        .iter()
+        .filter(|p| p.owner != user_id && p.perimeter.intersects(perimeter))
+        .cloned()
+        .collect();
+
+    Ok(res)
 }

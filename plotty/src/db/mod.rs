@@ -64,6 +64,26 @@ impl Database {
         Ok(())
     }
 
+    pub async fn get_plots(&self) -> Result<Vec<Region>> {
+        let mut rows =
+            sqlx::query("SELECT plot_id, user_id, ax, az, bx, bz FROM plots").fetch(&self.pool);
+
+        let mut res = Vec::new();
+        while let Some(row) = rows.try_next().await? {
+            let region = Region {
+                owner: row.try_get("user_id")?,
+                name: row.try_get("plot_id")?,
+                perimeter: Perimeter(
+                    Point(row.try_get("ax")?, row.try_get("az")?),
+                    Point(row.try_get("bx")?, row.try_get("bz")?),
+                ),
+            };
+            res.push(region);
+        }
+
+        Ok(res)
+    }
+
     pub async fn get_user_plots<I: Into<u64> + Copy>(&self, user_id: I) -> Result<Vec<Region>> {
         let mut rows = sqlx::query("SELECT plot_id, ax, az, bx, bz FROM plots WHERE user_id = ?")
             .bind(user_id.into())
