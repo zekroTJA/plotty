@@ -71,7 +71,7 @@ impl Database {
         while let Some(row) = rows.try_next().await? {
             let user = User {
                 discord_id: row.try_get("user_id")?,
-                minecraft_username: row.try_get("mc_name")?,
+                minecraft_uid: row.try_get("mc_name")?,
             };
             res.push(user);
         }

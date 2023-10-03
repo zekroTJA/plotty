@@ -260,20 +260,29 @@ pub async fn autocomplete(ctx: &Context, i: &AutocompleteInteraction, db: &Datab
                         .value
                         .as_ref()
                         .and_then(|v| v.as_str())
-                        .is_some_and(|v| u.minecraft_username.starts_with(v))
+                        .is_some_and(|v| u.minecraft_uid.starts_with(v))
             })
             .map(|u| async {
                 let username = get_user(ctx, u.discord_id)
                     .await
                     .map(|u| u.name)
                     .unwrap_or_else(|_| u.discord_id.to_string());
-                json!({
-                    "name": format!("{} ({})", u.minecraft_username, username),
-                    "value": u.minecraft_username,
-                })
+                minecraft_uuid::get_username_by_uuid(&u.minecraft_uid)
+                    .await
+                    .ok()
+                    .map(|mc_username| {
+                        json!({
+                            "name": format!("{} ({})", &mc_username, username),
+                            "value": mc_username,
+                        })
+                    })
             });
 
-        let usernames = join_all(usernames).await.iter().cloned().collect();
+        let usernames = join_all(usernames)
+            .await
+            .iter()
+            .filter_map(|r| r.clone())
+            .collect();
 
         i.create_autocomplete_response(
             &ctx.http,
