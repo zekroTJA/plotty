@@ -7,8 +7,10 @@ use crate::{
 };
 use anyhow::{bail, Result};
 use minecraft_client_rs::Message;
+use serenity::futures::future::join_all;
 use serenity::json::json;
 use serenity::model::prelude::autocomplete::AutocompleteInteraction;
+use serenity::model::user::User;
 use serenity::{
     builder::{CreateApplicationCommand, CreateEmbed},
     model::prelude::{
@@ -128,6 +130,7 @@ pub fn register(command: &mut CreateApplicationCommand) -> &mut CreateApplicatio
                                 .description("The Minecraft name of the member to be added.")
                                 .kind(CommandOptionType::String)
                                 .required(true)
+                                .set_autocomplete(true)
                         })
                 })
                 .create_sub_option(|so| {
@@ -146,6 +149,7 @@ pub fn register(command: &mut CreateApplicationCommand) -> &mut CreateApplicatio
                                 .description("The Minecraft name of the member to be removed.")
                                 .kind(CommandOptionType::String)
                                 .required(true)
+                                .set_autocomplete(true)
                         })
                 })
         })
@@ -196,9 +200,8 @@ pub async fn run(
     }
 }
 
-pub async fn autocomplete(ctx: &Context, i: &AutocompleteInteraction, db: &Database) -> Result<()> {
-    let plotname_option = i
-        .data
+fn find_option_deep(i: &AutocompleteInteraction, name: &str) -> Option<CommandDataOption> {
+    i.data
         .options
         .iter()
         .flat_map(|s| &s.options)
@@ -209,9 +212,18 @@ pub async fn autocomplete(ctx: &Context, i: &AutocompleteInteraction, db: &Datab
                 s.options.clone()
             }
         })
-        .find(|o| o.name == "plotname");
+        .find(|o| o.name == name && o.focused)
+}
 
-    if let Some(plotname) = plotname_option {
+async fn get_user(ctx: &Context, id: u64) -> Result<User> {
+    match ctx.cache.user(id) {
+        Some(u) => Ok(u),
+        None => Ok(ctx.http.get_user(id).await?),
+    }
+}
+
+pub async fn autocomplete(ctx: &Context, i: &AutocompleteInteraction, db: &Database) -> Result<()> {
+    if let Some(plotname) = find_option_deep(i, "plotname") {
         let plots = db
             .get_user_plots(i.user.id)
             .await?
@@ -230,8 +242,46 @@ pub async fn autocomplete(ctx: &Context, i: &AutocompleteInteraction, db: &Datab
                 })
             })
             .collect();
+
         i.create_autocomplete_response(&ctx.http, |r| r.set_choices(plots))
             .await?;
+
+        return Ok(());
+    }
+
+    if let Some(username) = find_option_deep(i, "username") {
+        let res = db.list_users().await?;
+
+        let usernames = res
+            .iter()
+            .filter(|u| {
+                u.discord_id != i.user.id.0
+                    && username
+                        .value
+                        .as_ref()
+                        .and_then(|v| v.as_str())
+                        .is_some_and(|v| u.minecraft_username.starts_with(v))
+            })
+            .map(|u| async {
+                let username = get_user(ctx, u.discord_id)
+                    .await
+                    .map(|u| u.name)
+                    .unwrap_or_else(|_| u.discord_id.to_string());
+                json!({
+                    "name": format!("{} ({})", u.minecraft_username, username),
+                    "value": u.minecraft_username,
+                })
+            });
+
+        let usernames = join_all(usernames).await.iter().cloned().collect();
+
+        i.create_autocomplete_response(
+            &ctx.http,
+            |r: &mut serenity::builder::CreateAutocompleteResponse| r.set_choices(usernames),
+        )
+        .await?;
+
+        return Ok(());
     }
 
     Ok(())

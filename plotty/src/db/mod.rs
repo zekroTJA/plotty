@@ -1,4 +1,4 @@
-use crate::models::{Perimeter, Point, Region};
+use crate::models::{Perimeter, Point, Region, User};
 use anyhow::Result;
 use serenity::futures::TryStreamExt;
 use sqlx::{MySqlPool, Row};
@@ -62,6 +62,21 @@ impl Database {
         }
 
         Ok(())
+    }
+
+    pub async fn list_users(&self) -> Result<Vec<User>> {
+        let mut rows = sqlx::query("SELECT user_id, mc_name FROM users").fetch(&self.pool);
+
+        let mut res = Vec::new();
+        while let Some(row) = rows.try_next().await? {
+            let user = User {
+                discord_id: row.try_get("user_id")?,
+                minecraft_username: row.try_get("mc_name")?,
+            };
+            res.push(user);
+        }
+
+        Ok(res)
     }
 
     pub async fn get_plots(&self) -> Result<Vec<Region>> {
