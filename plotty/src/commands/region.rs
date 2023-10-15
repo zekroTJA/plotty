@@ -252,28 +252,33 @@ pub async fn autocomplete(ctx: &Context, i: &AutocompleteInteraction, db: &Datab
     if let Some(username) = find_option_deep(i, "username") {
         let res = db.list_users().await?;
 
-        let usernames = res
+        let users = join_all(res.iter().map(|u| async {
+            let uname = get_user(ctx, u.discord_id)
+                .await
+                .map(|u| u.name)
+                .unwrap_or_else(|_| u.discord_id.to_string());
+            (u.clone(), uname)
+        }))
+        .await;
+
+        let usernames = users
             .iter()
-            .filter(|u| {
+            .filter(|(u, uname)| {
                 u.discord_id != i.user.id.0
                     && username
                         .value
                         .as_ref()
                         .and_then(|v| v.as_str())
-                        .is_some_and(|v| u.minecraft_uid.starts_with(v))
+                        .is_some_and(|v| uname.starts_with(v))
             })
-            .map(|u| async {
-                let username = get_user(ctx, u.discord_id)
-                    .await
-                    .map(|u| u.name)
-                    .unwrap_or_else(|_| u.discord_id.to_string());
+            .map(|(u, uname)| async {
                 minecraft_uuid::get_username_by_uuid(&u.minecraft_uid)
                     .await
                     .ok()
-                    .map(|mc_username| {
+                    .map(|mc_uname| {
                         json!({
-                            "name": format!("{} ({})", &mc_username, username),
-                            "value": mc_username,
+                            "name": format!("{} ({})", &mc_uname, uname.clone()),
+                            "value": mc_uname,
                         })
                     })
             });
