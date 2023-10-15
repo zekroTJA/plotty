@@ -277,7 +277,7 @@ pub async fn autocomplete(ctx: &Context, i: &AutocompleteInteraction, db: &Datab
                     .ok()
                     .map(|mc_uname| {
                         json!({
-                            "name": format!("{} ({})", &mc_uname, uname.clone()),
+                            "name": format!("{} ({})", uname.clone(), &mc_uname),
                             "value": mc_uname,
                         })
                     })
