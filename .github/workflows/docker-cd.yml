@@ -7,7 +7,7 @@ on:
     tags:
       - "*"
     paths:
-      - "src/**"
+      - "**.rs"
       - "Cargo.lock"
       - ".github/workflows/docker-cd.yml"
   workflow_dispatch:
