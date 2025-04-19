@@ -187,7 +187,7 @@ pub async fn run(
 
     let options = &command.data.options;
     let subcmd = options
-        .get(0)
+        .first()
         .ok_or_else(|| anyhow::anyhow!("Response does not contain any sub command option."))?;
 
     match subcmd.name.as_str() {
@@ -245,8 +245,6 @@ pub async fn autocomplete(ctx: &Context, i: &AutocompleteInteraction, db: &Datab
 
         i.create_autocomplete_response(&ctx.http, |r| r.set_choices(plots))
             .await?;
-
-        return Ok(());
     }
 
     if let Some(username) = find_option_deep(i, "username") {
@@ -294,8 +292,6 @@ pub async fn autocomplete(ctx: &Context, i: &AutocompleteInteraction, db: &Datab
             |r: &mut serenity::builder::CreateAutocompleteResponse| r.set_choices(usernames),
         )
         .await?;
-
-        return Ok(());
     }
 
     Ok(())
@@ -308,7 +304,7 @@ async fn list(ctx: &Context, command: &ApplicationCommandInteraction, db: &Datab
         .get_user_plots(command.user.id)
         .await?
         .iter()
-        .map(|p| format!("  ▫️ {}", p.to_string()))
+        .map(|p| format!("  ▫️ {}", p))
         .collect::<Vec<_>>()
         .join("\n");
 
@@ -449,7 +445,7 @@ async fn members(
 ) -> Result<()> {
     let subcmd = subcmd
         .options
-        .get(0)
+        .first()
         .ok_or_else(|| anyhow::anyhow!("Response does not contain any sub command option."))?;
 
     match subcmd.name.as_str() {

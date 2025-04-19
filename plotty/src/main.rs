@@ -88,11 +88,15 @@ impl Handler {
     }
 
     async fn handle_autocomplete(&self, ctx: Context, autocomplete: AutocompleteInteraction) {
-        let _ = match autocomplete.data.name.as_str() {
+        let res = match autocomplete.data.name.as_str() {
             "region" => commands::region::autocomplete(&ctx, &autocomplete, &self.db).await,
             "bind" => Ok(()),
             _ => Ok(()),
         };
+
+        if let Err(err) = res {
+            error!("Failed responding autocomplete: {}", err);
+        }
     }
 }
 
@@ -131,7 +135,7 @@ async fn main() {
         Env::default().default_filter_or("info,serenity=warn,tracing=warn,sqlx::query=warn"),
     )
     .try_init()
-    .map_err(|e| io::Error::new(io::ErrorKind::Other, e))
+    .map_err(io::Error::other)
     .expect("Failed building logger");
 
     let mut b = Config::builder();

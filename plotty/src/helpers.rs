@@ -1,3 +1,5 @@
+use std::fmt;
+
 use serenity::{
     async_trait,
     builder::CreateEmbed,
@@ -92,8 +94,8 @@ impl OptionsHelper for CommandDataOption {
     }
 }
 
-impl ToString for Region {
-    fn to_string(&self) -> String {
-        format!("`{}` ({}m²)", self.name, self.perimeter.size())
+impl fmt::Display for Region {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "`{}` ({}m²)", self.name, self.perimeter.size())
     }
 }

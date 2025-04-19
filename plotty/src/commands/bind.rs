@@ -2,8 +2,8 @@ use crate::idcache::get_uuid_by_username;
 use crate::{db::Database, helpers::FollowUpHelper, mc::Rcon};
 use anyhow::Result;
 use minecraft_client_rs::Message;
+use serenity::builder::CreateApplicationCommand;
 use serenity::{
-    builder::CreateApplicationCommand,
     model::prelude::{
         command::CommandOptionType, interaction::application_command::ApplicationCommandInteraction,
     },
