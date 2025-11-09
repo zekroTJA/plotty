@@ -54,7 +54,6 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
 
       - name: Docker Remote Deploy
-        if: ${{ env.TAG == 'latest' }}
         uses: appleboy/ssh-action@master
         with:
           host: zerotwo.zekro.de

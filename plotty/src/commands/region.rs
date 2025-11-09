@@ -110,6 +110,14 @@ pub fn register(command: &mut CreateApplicationCommand) -> &mut CreateApplicatio
                         .kind(CommandOptionType::Integer)
                         .required(true)
                 })
+                .create_sub_option(|so| {
+                    so.name("world")
+                        .description("The world to create the plot in")
+                        .kind(CommandOptionType::String)
+                        .add_string_choice("Overworld", "world")
+                        .add_string_choice("Nether", "nether")
+                        .add_string_choice("The End", "the_end")
+                })
         })
         // ----------------------------------
         // member sub command group
@@ -344,7 +352,7 @@ async fn create(
     let world = subcmd
         .get_option_by_name("world")?
         .as_str()
-        .unwrap_or("overworld");
+        .unwrap_or("world");
 
     let perimeter = Perimeter(
         Point(
@@ -399,6 +407,11 @@ async fn redefine(
         .ok_or_else(|| anyhow::anyhow!("Plot name value is not a string"))?
         .to_lowercase();
 
+    let world = subcmd
+        .get_option_by_name("world")?
+        .as_str()
+        .unwrap_or("world");
+
     let region = db.get_plot_by_name(plot_name).await?;
     if region.is_none() || region.unwrap().owner != u64::from(command.user.id) {
         command
@@ -433,7 +446,7 @@ async fn redefine(
         perimeter,
     };
 
-    update_plot(rc, &region)?;
+    update_plot(rc, &region, world)?;
     db.update_plot(&region).await?;
 
     command
@@ -676,32 +689,29 @@ fn create_plot(rc: &Rcon, region: &Region, user_name: &str, world: &str) -> Resu
         .get_conn()
         .map_err(|e| anyhow::anyhow!("RCON connection failed: {}", e.to_string()))?;
 
-    select_perimeter(&mut conn, &region.perimeter)?;
-    check_err(conn.cmd(&format!(
-        "rg create {} {} -w {}",
-        region.name, user_name, world
-    )))?;
+    select_perimeter(&mut conn, &region.perimeter, world)?;
+    check_err(conn.cmd(&format!("region create {} {}", region.name, user_name)))?;
 
     Ok(())
 }
 
-fn update_plot(rc: &Rcon, region: &Region) -> Result<()> {
+fn update_plot(rc: &Rcon, region: &Region, world: &str) -> Result<()> {
     let mut conn = rc
         .get_conn()
         .map_err(|e| anyhow::anyhow!("RCON connection failed: {}", e.to_string()))?;
 
-    select_perimeter(&mut conn, &region.perimeter)?;
+    select_perimeter(&mut conn, &region.perimeter, world)?;
     check_err(conn.cmd(&format!("rg update {}", region.name)))?;
 
     Ok(())
 }
 
-fn select_perimeter(conn: &mut Conn, perimeter: &Perimeter) -> Result<()> {
+fn select_perimeter(conn: &mut Conn, perimeter: &Perimeter, world: &str) -> Result<()> {
     // TODO: Make configurable or whatever.
-    check_err(conn.cmd("/world world"))?;
-    check_err(conn.cmd(&format!("/pos1 {},0,{}", perimeter.0 .0, perimeter.0 .1)))?;
-    check_err(conn.cmd(&format!("/pos2 {},0,{}", perimeter.1 .0, perimeter.1 .1)))?;
-    check_err(conn.cmd("/expand vert"))?;
+    check_err(conn.cmd(&format!("//world {world}")))?;
+    check_err(conn.cmd(&format!("//pos1 {},0,{}", perimeter.0 .0, perimeter.0 .1)))?;
+    check_err(conn.cmd(&format!("//pos2 {},0,{}", perimeter.1 .0, perimeter.1 .1)))?;
+    check_err(conn.cmd("//expand vert"))?;
     Ok(())
 }
 
