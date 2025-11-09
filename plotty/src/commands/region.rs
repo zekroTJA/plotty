@@ -68,7 +68,7 @@ pub fn register(command: &mut CreateApplicationCommand) -> &mut CreateApplicatio
                     so.name("world")
                         .description("The world to create the plot in")
                         .kind(CommandOptionType::String)
-                        .add_string_choice("Overworld", "overworld")
+                        .add_string_choice("Overworld", "world")
                         .add_string_choice("Nether", "nether")
                         .add_string_choice("The End", "the_end")
                 })
