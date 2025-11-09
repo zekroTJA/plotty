@@ -1,8 +1,6 @@
 use anyhow::Result;
-use std::{
-    collections::HashMap,
-    sync::{Arc, RwLock},
-};
+use std::collections::HashMap;
+use std::sync::{Arc, RwLock};
 use tokio::sync::OnceCell;
 
 static CACHE: OnceCell<Arc<RwLock<HashMap<String, String>>>> = OnceCell::const_new();

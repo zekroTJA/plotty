@@ -1,6 +1,5 @@
-use std::env;
-
 use minecraft_uuid::{get_username_by_uuid, get_uuid_by_username};
+use std::env;
 use uuid::Uuid;
 
 #[tokio::main]

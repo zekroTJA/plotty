@@ -1,14 +1,13 @@
+use crate::db::Database;
+use crate::helpers::FollowUpHelper;
 use crate::idcache::get_uuid_by_username;
-use crate::{db::Database, helpers::FollowUpHelper, mc::Rcon};
+use crate::mc::Rcon;
 use anyhow::Result;
 use minecraft_client_rs::Message;
 use serenity::builder::CreateApplicationCommand;
-use serenity::{
-    model::prelude::{
-        command::CommandOptionType, interaction::application_command::ApplicationCommandInteraction,
-    },
-    prelude::Context,
-};
+use serenity::model::prelude::command::CommandOptionType;
+use serenity::model::prelude::interaction::application_command::ApplicationCommandInteraction;
+use serenity::prelude::Context;
 
 pub fn register(command: &mut CreateApplicationCommand) -> &mut CreateApplicationCommand {
     command

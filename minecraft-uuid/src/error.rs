@@ -1,6 +1,6 @@
-use std::{error::Error, fmt::Display};
-
 use crate::models::ErrorResponse;
+use std::error::Error;
+use std::fmt::Display;
 
 /// Error constructed from an erroneous API
 /// response.

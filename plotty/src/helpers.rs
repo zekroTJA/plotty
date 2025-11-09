@@ -1,19 +1,14 @@
-use std::fmt;
-
-use serenity::{
-    async_trait,
-    builder::CreateEmbed,
-    http::Http,
-    json::Value,
-    model::prelude::{
-        interaction::application_command::{ApplicationCommandInteraction, CommandDataOption},
-        Message,
-    },
-    utils::Color,
-    Result,
-};
-
 use crate::models::Region;
+use serenity::builder::CreateEmbed;
+use serenity::http::Http;
+use serenity::json::Value;
+use serenity::model::prelude::interaction::application_command::{
+    ApplicationCommandInteraction, CommandDataOption,
+};
+use serenity::model::prelude::Message;
+use serenity::utils::Color;
+use serenity::{async_trait, Result};
+use std::fmt;
 
 #[async_trait]
 pub trait FollowUpHelper {

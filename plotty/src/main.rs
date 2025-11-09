@@ -6,29 +6,22 @@ mod idcache;
 mod mc;
 mod models;
 
-use config::{builder::DefaultState, Config, ConfigBuilder, Environment, File, FileFormat};
+use config::builder::DefaultState;
+use config::{Config, ConfigBuilder, Environment, File, FileFormat};
 use db::Database;
 use env_logger::Env;
 use log::{debug, error, info};
 use mc::Rcon;
-use serenity::{
-    async_trait,
-    builder::CreateEmbed,
-    model::{
-        application::interaction::{
-            application_command::ApplicationCommandInteraction,
-            autocomplete::AutocompleteInteraction,
-        },
-        prelude::{
-            interaction::{Interaction, InteractionResponseType},
-            GuildId, Ready,
-        },
-    },
-    prelude::{Context, EventHandler, GatewayIntents},
-    utils::Color,
-    Client,
-};
-use std::{io, sync::Arc};
+use serenity::builder::CreateEmbed;
+use serenity::model::application::interaction::application_command::ApplicationCommandInteraction;
+use serenity::model::application::interaction::autocomplete::AutocompleteInteraction;
+use serenity::model::prelude::interaction::{Interaction, InteractionResponseType};
+use serenity::model::prelude::{GuildId, Ready};
+use serenity::prelude::{Context, EventHandler, GatewayIntents};
+use serenity::utils::Color;
+use serenity::{async_trait, Client};
+use std::io;
+use std::sync::Arc;
 
 struct Handler {
     cfg: conf::Config,

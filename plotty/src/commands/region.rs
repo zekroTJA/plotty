@@ -1,30 +1,25 @@
+use crate::db::Database;
+use crate::helpers::{FollowUpHelper, OptionsHelper};
 use crate::idcache::get_username_by_uuid;
-use crate::{
-    db::Database,
-    helpers::{FollowUpHelper, OptionsHelper},
-    mc::{Conn, Rcon},
-    models::{Perimeter, Point, Region},
-};
+use crate::mc::{Conn, Rcon};
+use crate::models::{Perimeter, Point, Region};
 use anyhow::{bail, Result};
 use minecraft_client_rs::Message;
+use serenity::builder::{CreateApplicationCommand, CreateEmbed};
 use serenity::futures::future::join_all;
 use serenity::json::json;
 use serenity::model::prelude::autocomplete::AutocompleteInteraction;
-use serenity::model::user::User;
-use serenity::{
-    builder::{CreateApplicationCommand, CreateEmbed},
-    model::prelude::{
-        command::CommandOptionType,
-        component::ButtonStyle,
-        interaction::{
-            application_command::{ApplicationCommandInteraction, CommandDataOption},
-            InteractionResponseType,
-        },
-    },
-    prelude::Context,
-    utils::Color,
+use serenity::model::prelude::command::CommandOptionType;
+use serenity::model::prelude::component::ButtonStyle;
+use serenity::model::prelude::interaction::application_command::{
+    ApplicationCommandInteraction, CommandDataOption,
 };
-use std::{error::Error, time::Duration};
+use serenity::model::prelude::interaction::InteractionResponseType;
+use serenity::model::user::User;
+use serenity::prelude::Context;
+use serenity::utils::Color;
+use std::error::Error;
+use std::time::Duration;
 
 const ERR_PREFIX: &str = "§c";
 
@@ -205,13 +200,15 @@ fn find_option_deep(i: &AutocompleteInteraction, name: &str) -> Option<CommandDa
         .options
         .iter()
         .flat_map(|s| &s.options)
-        .flat_map(|s| {
-            if s.options.is_empty() {
-                vec![s.clone()]
-            } else {
-                s.options.clone()
-            }
-        })
+        .flat_map(
+            |s| {
+                if s.options.is_empty() {
+                    vec![s.clone()]
+                } else {
+                    s.options.clone()
+                }
+            },
+        )
         .find(|o| o.name == name && o.focused)
 }
 
