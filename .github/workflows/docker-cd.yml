@@ -62,5 +62,5 @@ jobs:
           password: ${{ secrets.SSH_PASSWORD }}
           script: |
             cd /home/mgr/docker/core
-            docker-compose pull plotty
-            docker-compose up -d plotty
+            docker compose pull plotty
+            docker compose up -d plotty
