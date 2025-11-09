@@ -72,11 +72,12 @@ impl FollowUpHelper for ApplicationCommandInteraction {
 }
 
 pub trait OptionsHelper {
-    fn get_option_by_name(&self, name: &str) -> anyhow::Result<&Value>;
+    fn get_required_option_by_name(&self, name: &str) -> anyhow::Result<&Value>;
+    fn get_option_by_name(&self, name: &str) -> Option<&Value>;
 }
 
 impl OptionsHelper for CommandDataOption {
-    fn get_option_by_name(&self, name: &str) -> anyhow::Result<&Value> {
+    fn get_required_option_by_name(&self, name: &str) -> anyhow::Result<&Value> {
         let i = self
             .options
             .iter()
@@ -86,6 +87,13 @@ impl OptionsHelper for CommandDataOption {
             .as_ref()
             .ok_or_else(|| anyhow::anyhow!("No value for {name}"))?;
         Ok(i)
+    }
+
+    fn get_option_by_name(&self, name: &str) -> Option<&Value> {
+        self.options
+            .iter()
+            .find(|o| o.name == name)
+            .and_then(|o| o.value.as_ref())
     }
 }
 

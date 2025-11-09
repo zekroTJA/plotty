@@ -350,8 +350,12 @@ async fn create(
     let plot_name = format!("{}_plot_{}", username.replace('_', ""), plot_id + 1);
 
     let world = subcmd
-        .get_option_by_name("world")?
-        .as_str()
+        .get_option_by_name("world")
+        .map(|v| {
+            v.as_str()
+                .ok_or_else(|| anyhow::anyhow!("World value is not a string"))
+        })
+        .transpose()?
         .unwrap_or("world");
 
     let perimeter = Perimeter(
@@ -402,14 +406,18 @@ async fn redefine(
     rc: &Rcon,
 ) -> Result<()> {
     let plot_name = &subcmd
-        .get_option_by_name("plotname")?
+        .get_required_option_by_name("plotname")?
         .as_str()
         .ok_or_else(|| anyhow::anyhow!("Plot name value is not a string"))?
         .to_lowercase();
 
     let world = subcmd
-        .get_option_by_name("world")?
-        .as_str()
+        .get_option_by_name("world")
+        .map(|v| {
+            v.as_str()
+                .ok_or_else(|| anyhow::anyhow!("World value is not a string"))
+        })
+        .transpose()?
         .unwrap_or("world");
 
     let region = db.get_plot_by_name(plot_name).await?;
@@ -486,13 +494,13 @@ async fn members_add(
     rc: &Rcon,
 ) -> Result<()> {
     let plotname = subcmd
-        .get_option_by_name("plotname")?
+        .get_required_option_by_name("plotname")?
         .as_str()
         .ok_or_else(|| anyhow::anyhow!("Value is not a string"))?
         .to_lowercase();
 
     let membername = subcmd
-        .get_option_by_name("username")?
+        .get_required_option_by_name("username")?
         .as_str()
         .ok_or_else(|| anyhow::anyhow!("Value is not a string"))?;
 
@@ -532,13 +540,13 @@ async fn members_remove(
     rc: &Rcon,
 ) -> Result<()> {
     let plotname = subcmd
-        .get_option_by_name("plotname")?
+        .get_required_option_by_name("plotname")?
         .as_str()
         .ok_or_else(|| anyhow::anyhow!("Value is not a string"))?
         .to_lowercase();
 
     let membername = subcmd
-        .get_option_by_name("username")?
+        .get_required_option_by_name("username")?
         .as_str()
         .ok_or_else(|| anyhow::anyhow!("Value is not a string"))?;
 
@@ -580,7 +588,7 @@ async fn delete(
     rc: &Rcon,
 ) -> Result<()> {
     let plot_name = &subcmd
-        .get_option_by_name("plotname")?
+        .get_required_option_by_name("plotname")?
         .as_str()
         .ok_or_else(|| anyhow::anyhow!("Plot name value is not a string"))?
         .to_lowercase();
@@ -678,7 +686,7 @@ async fn delete(
 
 fn get_pos_option(subcmd: &CommandDataOption, name: &str) -> Result<i64> {
     let i = subcmd
-        .get_option_by_name(name)?
+        .get_required_option_by_name(name)?
         .as_i64()
         .ok_or_else(|| anyhow::anyhow!("Value is not of type i64"))?;
     Ok(i)
