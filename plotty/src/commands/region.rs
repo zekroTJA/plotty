@@ -64,6 +64,14 @@ pub fn register(command: &mut CreateApplicationCommand) -> &mut CreateApplicatio
                         .kind(CommandOptionType::Integer)
                         .required(true)
                 })
+                .create_sub_option(|so| {
+                    so.name("world")
+                        .description("The world to create the plot in")
+                        .kind(CommandOptionType::String)
+                        .add_string_choice("Overworld", "overworld")
+                        .add_string_choice("Nether", "nether")
+                        .add_string_choice("The End", "the_end")
+                })
         })
         // ----------------------------------
         // redefine sub command
@@ -333,6 +341,11 @@ async fn create(
 
     let plot_name = format!("{}_plot_{}", username.replace('_', ""), plot_id + 1);
 
+    let world = subcmd
+        .get_option_by_name("world")?
+        .as_str()
+        .unwrap_or("overworld");
+
     let perimeter = Perimeter(
         Point(
             get_pos_option(subcmd, "pos1-x")?,
@@ -360,7 +373,7 @@ async fn create(
     };
 
     db.inc_plot_user_id(command.user.id).await?;
-    create_plot(rc, &region, username)?;
+    create_plot(rc, &region, username, world)?;
     db.add_plot(&region).await?;
 
     command
@@ -658,13 +671,16 @@ fn get_pos_option(subcmd: &CommandDataOption, name: &str) -> Result<i64> {
     Ok(i)
 }
 
-fn create_plot(rc: &Rcon, region: &Region, user_name: &str) -> Result<()> {
+fn create_plot(rc: &Rcon, region: &Region, user_name: &str, world: &str) -> Result<()> {
     let mut conn = rc
         .get_conn()
         .map_err(|e| anyhow::anyhow!("RCON connection failed: {}", e.to_string()))?;
 
     select_perimeter(&mut conn, &region.perimeter)?;
-    check_err(conn.cmd(&format!("rg create {} {}", region.name, user_name)))?;
+    check_err(conn.cmd(&format!(
+        "rg create {} {} -w {}",
+        region.name, user_name, world
+    )))?;
 
     Ok(())
 }
